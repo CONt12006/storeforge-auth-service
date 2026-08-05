@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "storeforge-auth-service"
+version = "0.1.0"
+description = "Authentication and authorization service for StoreForge"
+requires-python = ">=3.12"
+
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy",
+    "asyncpg",
+    "alembic",
+    "pydantic-settings",
+    "email-validator",
+    "pwdlib[argon2]",
+    "python-jose[cryptography]",
+]
+
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "httpx",
+    "ruff",
+]
+
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
