@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth_service.database.models import Users
+from auth_service.database.models import User
 
 
 class UserRepository:
@@ -16,7 +16,7 @@ class UserRepository:
         """
         self.session = session
 
-    async def get_by_id(self, user_id: int) -> Users | None:
+    async def get_by_id(self, user_id: int) -> User | None:
         """
         Находит пользователя по его идентификатору.
 
@@ -24,12 +24,12 @@ class UserRepository:
             user_id: Числовой идентификатор пользователя.
 
         Returns:
-            Объект Users, если пользователь найден.
+            Объект User, если пользователь найден.
             None, если пользователя с таким ID нет.
         """
-        return await self.session.get(Users, user_id)
+        return await self.session.get(User, user_id)
 
-    async def get_by_email(self, email: str) -> Users | None:
+    async def get_by_email(self, email: str) -> User | None:
         """
         Находит пользователя по адресу электронной почты.
 
@@ -37,10 +37,10 @@ class UserRepository:
             email: Email пользователя.
 
         Returns:
-            Объект Users, если пользователь найден.
+            Объект User, если пользователь найден.
             None, если пользователя с таким email нет.
         """
-        statement = select(Users).where(Users.email == email)
+        statement = select(User).where(User.email == email)
 
         result = await self.session.execute(statement)
 
@@ -53,7 +53,7 @@ class UserRepository:
         password_hash: str,
         first_name: str | None = None,
         last_name: str | None = None,
-    ) -> Users:
+    ) -> User:
         """
         Создаёт нового пользователя и добавляет его в текущую транзакцию.
 
@@ -68,9 +68,9 @@ class UserRepository:
             last_name: Фамилия пользователя.
 
         Returns:
-            Созданный объект Users.
+            Созданный объект User.
         """
-        user = Users(
+        user = User(
             email=email,
             password_hash=password_hash,
             first_name=first_name,
@@ -86,11 +86,11 @@ class UserRepository:
 
     async def update_profile(
         self,
-        user: Users,
+        user: User,
         *,
         first_name: str | None,
         last_name: str | None,
-    ) -> Users:
+    ) -> User:
         """
         Обновляет имя и фамилию пользователя.
 
@@ -102,7 +102,7 @@ class UserRepository:
             last_name: Новая фамилия пользователя.
 
         Returns:
-            Обновлённый объект Users.
+            Обновлённый объект User.
         """
         user.first_name = first_name
         user.last_name = last_name
@@ -114,9 +114,9 @@ class UserRepository:
 
     async def update_password_hash(
         self,
-        user: Users,
+        user: User,
         password_hash: str,
-    ) -> Users:
+    ) -> User:
         """
         Обновляет хеш пароля пользователя.
 
@@ -130,7 +130,7 @@ class UserRepository:
             password_hash: Новый хеш пароля.
 
         Returns:
-            Обновлённый объект Users.
+            Обновлённый объект User.
         """
         user.password_hash = password_hash
 
@@ -141,9 +141,9 @@ class UserRepository:
 
     async def set_active(
         self,
-        user: Users,
+        user: User,
         is_active: bool,
-    ) -> Users:
+    ) -> User:
         """
         Изменяет состояние активности пользователя.
 
@@ -157,7 +157,7 @@ class UserRepository:
             is_active: Новое состояние активности.
 
         Returns:
-            Обновлённый объект Users.
+            Обновлённый объект User.
         """
         user.is_active = is_active
 
@@ -171,7 +171,7 @@ class UserRepository:
         *,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[Users]:
+    ) -> list[User]:
         """
         Возвращает список пользователей с пагинацией.
 
@@ -180,11 +180,11 @@ class UserRepository:
             offset: Количество пользователей, которые нужно пропустить.
 
         Returns:
-            Список объектов Users.
+            Список объектов User.
         """
         statement = (
-            select(Users)
-            .order_by(Users.created_at.desc())
+            select(User)
+            .order_by(User.created_at.desc())
             .limit(limit)
             .offset(offset)
         )
@@ -193,7 +193,7 @@ class UserRepository:
 
         return list(result.scalars().all())
 
-    async def delete(self, user: Users) -> None:
+    async def delete(self, user: User) -> None:
         """
         Удаляет пользователя из базы данных.
 

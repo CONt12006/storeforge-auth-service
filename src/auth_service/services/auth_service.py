@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth_service.database.models import Users
+from auth_service.database.models import User
 from auth_service.repositories.user_repository import UserRepository
 from auth_service.schemas.auth import RegisterRequest
 from auth_service.security.password import hash_password
@@ -28,7 +28,7 @@ class AuthService:
         self.session = session
         self.user_repository = user_repository
 
-    async def register(self, request: RegisterRequest) -> Users:
+    async def register(self, request: RegisterRequest) -> User:
         """
         Регистрирует нового пользователя.
 
