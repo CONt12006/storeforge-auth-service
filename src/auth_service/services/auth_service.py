@@ -60,6 +60,10 @@ class AuthService:
             last_name=request.last_name,
         )
 
-        await self.session.commit()
+        try:
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
         return user
