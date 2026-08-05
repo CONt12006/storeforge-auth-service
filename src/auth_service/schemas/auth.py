@@ -15,3 +15,20 @@ class LoginRequest(BaseModel):
 
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+
+
+class RefreshRequest(BaseModel):
+    """Запрос на обновление пары access/refresh токенов"""
+
+    refresh_token: str
+
+
+class TokenResponse(BaseModel):
+    """
+    Ответ с новой парой токенов после успешной
+    аутентификации или обновления сессии.
+    """
+
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"

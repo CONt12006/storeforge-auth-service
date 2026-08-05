@@ -19,6 +19,8 @@ dependencies = [
     "email-validator",
     "pwdlib[argon2]",
     "python-jose[cryptography]",
+    "redis",
+    "pyjwt",
 ]
 
 
