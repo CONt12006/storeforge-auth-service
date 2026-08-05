@@ -1,9 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.auth_service.database.models import Users
-from src.auth_service.repositories.user_repository import UserRepository
-from src.auth_service.schemas.auth import RegisterRequest
-from src.auth_service.security.password import hash_password
+from auth_service.database.models import Users
+from auth_service.repositories.user_repository import UserRepository
+from auth_service.schemas.auth import RegisterRequest
+from auth_service.security.password import hash_password
 
 
 class EmailAlreadyExistsError(Exception):

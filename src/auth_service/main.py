@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from src.auth_service.api.auth import router as auth_router
+from auth_service.api.auth import router as auth_router
 
 
 app = FastAPI(title="StoreForge Auth Service")
