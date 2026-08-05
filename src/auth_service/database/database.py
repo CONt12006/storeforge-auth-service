@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 
 from auth_service.config import settings
 
-engine = create_async_engine(settings.database_url, echo = True)
+engine = create_async_engine(settings.database_url, echo=settings.database_echo)
 
 session_factory = async_sessionmaker(
     bind = engine,

@@ -1,0 +1,83 @@
+services:
+  postgres:
+    image: postgres:16-bookworm
+    container_name: storeforge-auth-postgres
+
+    environment:
+      POSTGRES_DB: storeforge_auth
+      POSTGRES_USER: storeforge
+      POSTGRES_PASSWORD: "0"
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - storeforge_auth_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U storeforge -d storeforge_auth
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: storeforge-auth-migrate
+
+    environment:
+      DATABASE_URL: postgresql+asyncpg://storeforge:0@postgres:5432/storeforge_auth
+      DATABASE_ECHO: "false"
+
+      JWT_SECRET_KEY: local-development-secret-key
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+
+    command:
+      - python
+      - -m
+      - alembic
+      - upgrade
+      - head
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: "no"
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: storeforge-auth-service
+
+    environment:
+      DATABASE_URL: postgresql+asyncpg://storeforge:0@postgres:5432/storeforge_auth
+      DATABASE_ECHO: "false"
+
+      JWT_SECRET_KEY: local-development-secret-key
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+    restart: unless-stopped
+
+
+volumes:
+  storeforge_auth_postgres_data:

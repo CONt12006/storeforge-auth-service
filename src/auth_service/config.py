@@ -8,6 +8,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 class Settings(BaseSettings):
     database_url: str
+    database_echo: bool = False
 
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
