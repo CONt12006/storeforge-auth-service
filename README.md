@@ -242,10 +242,9 @@ uvicorn auth_service.main:app --reload --app-dir src
 -   ✅ Роли
 -   ✅ Alembic
 -   ✅ Docker
--   ⬜ Refresh Token
--   ⬜ Redis
--   ⬜ RabbitMQ
--   ⬜ Email Verification
+-   ✅ Refresh Token
+-   ✅ Redis
+-   ✅ RabbitMQ
 -   ⬜ Password Reset
 -   ⬜ OpenTelemetry
 -   ⬜ CI/CD
