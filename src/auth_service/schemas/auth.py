@@ -17,6 +17,14 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class LogoutRequest(BaseModel):
+    """Запрос завершения пользовательской сессии."""
+
+    refresh_token: str = Field(
+        min_length=32
+    )
+
+
 class RefreshRequest(BaseModel):
     """Запрос на обновление пары access/refresh токенов"""
 
