@@ -2,7 +2,8 @@ from pydantic import BaseModel
 
 
 class TokenResponse(BaseModel):
-    """Ответ после успешного входа."""
+    """Пара access/refresh токенов."""
 
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
