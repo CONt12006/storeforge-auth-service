@@ -6,39 +6,33 @@ from auth_service.database.database import get_session
 from auth_service.database.models import User
 from auth_service.repositories.role_repository import RoleRepository
 from auth_service.repositories.user_repository import UserRepository
-from auth_service.security.jwt import (
-    InvalidTokenError,
-    decode_access_token,
-)
+from auth_service.security.jwt import InvalidTokenError, decode_access_token
 from auth_service.services.auth_service import AuthService
+from auth_service.database.redis import get_redis
+from auth_service.repositories.refresh_token_repository import RefreshTokenRepository
 
+from redis.asyncio import Redis
 
 bearer_scheme = HTTPBearer()
 
 
 def get_auth_service(
     session: AsyncSession = Depends(get_session),
+    redis: Redis = Depends(get_redis),
 ) -> AuthService:
-    """
-    Создаёт AuthService для обработки HTTP-запроса.
-
-    FastAPI получает SQLAlchemy-сессию через get_session(),
-    затем создаёт репозитории пользователей и ролей и передаёт
-    их в AuthService.
-
-    Args:
-        session: Асинхронная SQLAlchemy-сессия.
-
-    Returns:
-        Готовый объект AuthService.
-    """
     user_repository = UserRepository(session)
+
     role_repository = RoleRepository(session)
+
+    refresh_token_repository = RefreshTokenRepository(
+        redis
+    )
 
     return AuthService(
         session=session,
         user_repository=user_repository,
         role_repository=role_repository,
+        refresh_token_repository=refresh_token_repository,
     )
 
 
