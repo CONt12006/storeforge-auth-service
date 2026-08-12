@@ -1,11 +1,23 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import hmac
+from datetime import datetime, timezone
+
 from auth_service.database.models import User
 from auth_service.repositories.role_repository import RoleRepository
 from auth_service.repositories.user_repository import UserRepository
 from auth_service.schemas.auth import LoginRequest, RegisterRequest
 from auth_service.security.jwt import create_access_token
 from auth_service.security.password import hash_password, verify_password
+
+
+from auth_service.config import settings
+from auth_service.repositories.refresh_token_repository import RefreshTokenRepository
+from auth_service.security.refresh_token import InvalidRefreshTokenFormatError, generate_refresh_token, get_session_id, hash_refresh_token
+
+
+class InvalidRefreshTokenError(Exception):
+    """Refresh token недействителен."""
 
 
 class EmailAlreadyExistsError(Exception):
@@ -22,24 +34,18 @@ class UserInactiveError(Exception):
 
 class AuthService:
     """Сервис регистрации и авторизации пользователей."""
-
+    
     def __init__(
         self,
         session: AsyncSession,
         user_repository: UserRepository,
         role_repository: RoleRepository,
+        refresh_token_repository: RefreshTokenRepository,
     ) -> None:
-        """
-        Инициализирует сервис аутентификации.
-
-        Args:
-            session: Асинхронная SQLAlchemy-сессия для управления транзакцией.
-            user_repository: Репозиторий для работы с пользователями.
-            role_repository: Репозиторий для работы с ролями.
-        """
         self.session = session
         self.user_repository = user_repository
         self.role_repository = role_repository
+        self.refresh_token_repository = refresh_token_repository
 
     async def register(self, request: RegisterRequest) -> User:
         """
@@ -102,55 +108,166 @@ class AuthService:
             await self.session.rollback()
             raise
 
-    async def login(self, request: LoginRequest) -> str:
-        """
-        Выполняет вход пользователя и возвращает JWT access token.
-
-        Метод:
-
-        1. Ищет пользователя по email.
-        2. Проверяет, что пользователь активен.
-        3. Проверяет введённый пароль.
-        4. Получает роли пользователя.
-        5. Создаёт JWT access token.
-
-        Args:
-            request: Email и пароль пользователя.
-
-        Returns:
-            Подписанный JWT access token.
-
-        Raises:
-            InvalidCredentialsError:
-                Если пользователь не найден или пароль неверный.
-            UserInactiveError:
-                Если пользователь заблокирован.
-        """
+    async def login(
+        self,
+        request: LoginRequest,
+    ) -> tuple[str, str]:
         user = await self.user_repository.get_by_email(
-            request.email,
+            request.email
         )
-
+    
         if user is None:
             raise InvalidCredentialsError()
-
-        if not user.is_active:
-            raise UserInactiveError()
-
-        password_is_valid = verify_password(
+    
+        if not verify_password(
             request.password,
             user.password_hash,
-        )
-
-        if not password_is_valid:
+        ):
             raise InvalidCredentialsError()
+    
+        if not user.is_active:
+            raise UserInactiveError()
+    
+        return await self._issue_token_pair(user)
 
-        roles = await self.role_repository.get_user_role_names(
-            user.id,
+    async def _issue_token_pair(
+        self,
+        user: User,
+    ) -> tuple[str, str]:
+        roles = (
+            await self.role_repository.get_user_role_names(
+                user.id
+            )
         )
-
+    
         access_token = create_access_token(
             user_id=user.id,
             roles=roles,
         )
+    
+        session_id, refresh_token = (
+            generate_refresh_token()
+        )
+    
+        await self.refresh_token_repository.save(
+            session_id=session_id,
+            user_id=user.id,
+            token_hash=hash_refresh_token(
+                refresh_token
+            ),
+            created_at=datetime.now(
+                timezone.utc
+            ).isoformat(),
+            ttl_seconds=(
+                settings.refresh_token_expire_days
+                * 24
+                * 60
+                * 60
+            ),
+        )
+    
+        return access_token, refresh_token
 
-        return access_token
+    
+    async def refresh(
+        self,
+        refresh_token: str,
+    ) -> tuple[str, str]:
+        try:
+            session_id = get_session_id(
+                refresh_token
+            )
+        except InvalidRefreshTokenFormatError as error:
+            raise InvalidRefreshTokenError() from error
+    
+        session = (
+            await self.refresh_token_repository.get(
+                session_id
+            )
+        )
+    
+        if session is None:
+            raise InvalidRefreshTokenError()
+    
+        expected_hash = session["token_hash"]
+    
+        actual_hash = hash_refresh_token(
+            refresh_token
+        )
+    
+        if not hmac.compare_digest(
+            expected_hash,
+            actual_hash,
+        ):
+            raise InvalidRefreshTokenError()
+    
+        user = await self.user_repository.get_by_id(
+            int(session["user_id"])
+        )
+    
+        if user is None:
+            await self.refresh_token_repository.delete(
+                session_id
+            )
+    
+            raise InvalidRefreshTokenError()
+    
+        if not user.is_active:
+            await (
+                self.refresh_token_repository
+                .delete_all_for_user(user.id)
+            )
+    
+            raise UserInactiveError()
+    
+    
+        await self.refresh_token_repository.delete(
+            session_id
+        )
+    
+        return await self._issue_token_pair(user)
+
+
+    async def logout(
+        self,
+        refresh_token: str,
+    ) -> None:
+        try:
+            session_id = get_session_id(
+                refresh_token
+            )
+        except InvalidRefreshTokenFormatError:
+            return
+    
+        session = (
+            await self.refresh_token_repository.get(
+                session_id
+            )
+        )
+    
+        if session is None:
+            return
+    
+        expected_hash = session["token_hash"]
+    
+        actual_hash = hash_refresh_token(
+            refresh_token
+        )
+    
+        if hmac.compare_digest(
+            expected_hash,
+            actual_hash,
+        ):
+            await self.refresh_token_repository.delete(
+                session_id
+            )
+    
+    
+    async def logout_all(
+        self,
+        user_id: int,
+    ) -> None:
+        await (
+            self.refresh_token_repository
+            .delete_all_for_user(user_id)
+        )
