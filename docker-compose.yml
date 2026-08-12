@@ -77,7 +77,32 @@ services:
         condition: service_completed_successfully
 
     restart: unless-stopped
+    
+  redis:
+    image: redis:7.4-alpine
+    container_name: storeforge-auth-redis
 
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+
+    ports:
+      - "6380:6379"
+
+    volumes:
+      - storeforge_auth_redis_data:/data
+
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+    restart: unless-stopped
 
 volumes:
   storeforge_auth_postgres_data:

@@ -8,7 +8,15 @@ from auth_service.services.auth_service import (
     AuthService,
     EmailAlreadyExistsError,
     InvalidCredentialsError,
+    InvalidRefreshTokenError,
     UserInactiveError,
+)
+
+from auth_service.schemas.auth import (
+    LoginRequest,
+    LogoutRequest,
+    RefreshRequest,
+    RegisterRequest,
 )
 
 
@@ -58,22 +66,10 @@ async def login(
     request: LoginRequest,
     service: AuthService = Depends(get_auth_service),
 ) -> TokenResponse:
-    """
-    Выполняет вход пользователя по email и паролю.
-
-    Args:
-        request: Email и пароль пользователя.
-        service: Сервис регистрации и авторизации.
-
-    Returns:
-        JWT access token.
-
-    Raises:
-        HTTPException: Если email или пароль неверны.
-        HTTPException: Если пользователь заблокирован.
-    """
     try:
-        access_token = await service.login(request)
+        access_token, refresh_token = await service.login(
+            request
+        )
 
     except InvalidCredentialsError as error:
         raise HTTPException(
@@ -89,4 +85,36 @@ async def login(
 
     return TokenResponse(
         access_token=access_token,
+        refresh_token=refresh_token,
+    )
+
+
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+)
+async def refresh(
+    request: RefreshRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> TokenResponse:
+    try:
+        access_token, refresh_token = await service.refresh(
+            request.refresh_token
+        )
+
+    except InvalidRefreshTokenError as error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token недействителен или уже использован",
+        ) from error
+
+    except UserInactiveError as error:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Пользователь заблокирован",
+        ) from error
+
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
     )

@@ -62,6 +62,8 @@ pydantic-core==2.46.4
     # via pydantic
 pydantic-settings==2.14.2
     # via storeforge-auth-service (pyproject.toml)
+pyjwt==2.13.0
+    # via storeforge-auth-service (pyproject.toml)
 python-dotenv==1.2.2
     # via
     #   pydantic-settings
@@ -70,6 +72,8 @@ python-jose==3.5.0
     # via storeforge-auth-service (pyproject.toml)
 pyyaml==6.0.3
     # via uvicorn
+redis==8.1.0
+    # via storeforge-auth-service (pyproject.toml)
 rsa==4.9.1
     # via python-jose
 six==1.17.0
